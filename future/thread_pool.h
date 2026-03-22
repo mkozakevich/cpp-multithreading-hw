@@ -61,7 +61,7 @@ public:
             auto task_func = std::forward<F>(f);
             auto task_args = std::make_tuple(std::forward<Args>(args)...);
 
-            tasks.emplace([state, task_func = std::move(task_func), task_args = std::move(task_args)]() mutable {
+            tasks.emplace([state, task_func = std::move(task_func), task_args = std::move(task_args)]() mutable noexcept {
                 try {
                     if constexpr (std::is_void_v<R>) {
                         std::apply(task_func, task_args);
