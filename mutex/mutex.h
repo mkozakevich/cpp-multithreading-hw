@@ -46,8 +46,7 @@ public:
     }
 
     void unlock() {
-        if (state.fetch_sub(1, std::memory_order_release) != 1) {
-            state.store(0, std::memory_order_release);
+        if (state.exchange(0, std::memory_order_release) == 2) {
             futex_wake(&state, 1);
         }
     }
