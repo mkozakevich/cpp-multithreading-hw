@@ -3,6 +3,7 @@
 #include <optional>
 #include <mutex>
 #include <condition_variable>
+#include <utility>
 
 template <class T>
 class UnbufferedChannel {
@@ -15,7 +16,7 @@ public:
         }
 
         sender.wait(lock, [this] {
-            return !has_value || closed;
+            return !stored_value.has_value() || closed;
         });
 
         if (closed) {
@@ -23,12 +24,11 @@ public:
         }
 
         stored_value = value;
-        has_value = true;
 
         value_available.notify_one();
 
         sender.wait(lock, [this] {
-            return !has_value;
+            return !stored_value.has_value();
         });
     }
 
@@ -36,13 +36,11 @@ public:
         std::unique_lock<std::mutex> lock(mutex);
 
         value_available.wait(lock, [this] {
-            return has_value || closed;
+            return stored_value.has_value() || closed;
         });
 
-        if (has_value) {
-            std::optional<T> result = std::move(stored_value);
-            stored_value.reset();
-            has_value = false;
+        if (stored_value.has_value()) {
+            std::optional<T> result = std::exchange(stored_value, std::nullopt);
 
             sender.notify_all();
 
@@ -69,6 +67,5 @@ private:
     std::condition_variable value_available;
     std::condition_variable sender;
     bool closed{false};
-    bool has_value{false};
     std::optional<T> stored_value;
 };
